@@ -1,0 +1,126 @@
+# What init.py needs to install this stack; read by the installer and left out of factory.toml.
+[kit]
+# The paths each step may write: the tests step, and the build step. A new project is listed in the
+# solution, so the build also writes the solution and the build settings beside it (trial R-003), and
+# .gitignore, for what it produces and must keep out of git, such as a database file (trial R-009).
+# The tests step lists a new test project in the solution too, or the referee cannot build it and its
+# tests never run.
+test_writes = ["tests/**", "*.slnx", "*.sln"]
+build_writes = ["src/**", "docs/**", "*.slnx", "*.sln", "Directory.*.props", ".gitignore", "README.md"]
+# Beyond the source roots, the files whose change reaches every test: packages and build settings.
+cross_cutting = ["Directory.Packages.props", "Directory.Build.props", "global.json", "*.sln", "*.slnx"]
+# The guard's stack rules switched on: no --startup-project / remote --connection for `dotnet ef`,
+# and the appsettings secret rules on written content.
+guard_dotnet_ef = true
+guard_appsettings_secrets = true
+
+# ---------------------------------------------------------------- the stack adapter: .NET
+# Tests are tagged [Trait("AC", "R-001.AC-1")] (xUnit); results are .trx. Set the
+# solution in [commands].build and the test projects in test_projects_always.
+
+[adapter]
+name = "dotnet"
+acceptance_note = "The tests run the application in-process under the referee; evidence from a deployed environment comes after the merge."
+test_files = ["tests/**/*.cs"]
+skip_parts = ["bin", "obj"]
+criterion_marker = '\[Trait\(\s*"AC"\s*,\s*"([^"]+)"\s*\)\]'
+project_depth = 2
+run_tests = 'dotnet test {project} --no-build --logger "trx;LogFileName=results.trx" --results-directory "{results}"'
+# What the referee runs to install a package a design's `### Packages` names, once a person has approved it at the
+# design gate (the AI never installs one itself). The starter's product project; change it for another layout.
+install_package = 'dotnet add src/App package {name} --version {version}'
+run_tests_filtered = 'dotnet test {project} --no-build --filter "{filter}" --logger "trx;LogFileName=results.trx" --results-directory "{results}"'
+criterion_filter = "AC={ac}"
+criteria_join = "|"
+results = "trx"
+results_file = "results.trx"
+compile_error = 'error (CS\d{4})'
+missing_symbol_errors = ["CS0103", "CS0117", "CS0234", "CS0246", "CS1061", "CS7036"]
+# Any error line at all — a NuGet or MSBuild error beside a missing symbol is not red proof.
+any_error = ': error [A-Z]+\d+'
+
+[commands]
+build = "dotnet build"
+test_projects_always = []
+integration_project = ""
+integration_filter = ""
+verify = ["python3 devtools/factory/factory.py index --check"]
+
+# The code rules a regular expression holds honestly, refused at every commit by
+# devtools/checks/check-code-rules.py (the pre-commit hook): each one a generic rule in CLAUDE.md's
+# Coding principles. `files` and `exempt` are globs from the stack's root; a line matching `skip_lines`
+# (a comment) is not judged. The one place a rule allows goes in its `exempt`, with the reason beside it.
+[[code_rules]]
+id = "clock"
+pattern = '\b(?:DateTime|DateTimeOffset)\.(?:UtcNow|Now|Today)\b'
+files = ["src/**/*.cs"]
+# The one file that wraps the clock, if the project has one; an injected TimeProvider needs none.
+exempt = ["src/**/SystemClock.cs"]
+skip_lines = '^\s*(?://|/?\*)'
+message = "read the time from the injected clock (TimeProvider), never the system clock in place (CLAUDE.md, Coding principles: time comes from an injected clock)."
+
+[[code_rules]]
+id = "blocking"
+pattern = '\.(?:Wait\(\)|GetAwaiter\(\)\s*\.GetResult\(\))|\bTask\.Wait(?:All|Any)\(|\.Result\b(?![\w(<])(?!\s*=[^=>])'
+files = ["src/**/*.cs"]
+exempt = []
+skip_lines = '^\s*(?://|/?\*)'
+message = "await the task; never block on it with .Result, .Wait() or .GetAwaiter().GetResult() (CLAUDE.md, Coding principles: never block on asynchronous work). A property of your own named Result: rename it, or exempt its file."
+
+[[code_rules]]
+id = "cancellation"
+pattern = '\bCancellationToken\.None\b'
+files = ["src/**/*.cs"]
+exempt = []
+skip_lines = '^\s*(?://|/?\*)'
+message = "pass the caller's CancellationToken on; never CancellationToken.None (CLAUDE.md, Coding principles: long-running work can be cancelled)."
+
+[[code_rules]]
+id = "catch-all"
+pattern = '\bcatch\s*(?:\(\s*(?:System\.)?Exception(?:\s+\w+)?\s*\)(?!\s*when\b)|\{|$)'
+files = ["src/**/*.cs"]
+# The one top-level handler that logs every fault and answers 500 goes here, with its reason.
+exempt = []
+skip_lines = '^\s*(?://|/?\*)'
+message = "catch the specific exception you can handle, or filter it with `when`; a catch-all hides faults (CLAUDE.md, Coding principles: catch only the failures you can handle)."
+
+[[code_rules]]
+id = "console-output"
+pattern = '\bConsole\.(?:Write|WriteLine|Error\.Write|Error\.WriteLine)\('
+files = ["src/**/*.cs"]
+exempt = []
+skip_lines = '^\s*(?://|/?\*)'
+message = "log through ILogger with named fields, never Console (CLAUDE.md, Coding principles: structured logging)."
+
+[[code_rules]]
+id = "vague-name"
+pattern = '\b(?:class|interface|record|struct|enum)\s+\w*(?:Helper|Utility|Utilities|Utils)\b'
+files = ["src/**/*.cs"]
+exempt = []
+skip_lines = '^\s*(?://|/?\*)'
+message = "name the type for what it is or does, never Helper or Utility (CLAUDE.md, Coding principles: name things for what they are)."
+
+[drive]
+claude = "claude"
+model = ""
+permission_mode = "acceptEdits"
+setting_sources = "project,local"
+max_budget_usd_per_step = 8
+max_attempts = 3
+compact_above_tokens = 120000
+# "step": a fresh session per step (steps naming the same `session` share one); "run": one for the run.
+session = "step"
+allowed_tools = [
+  "Read", "Edit", "Write", "Glob", "Grep",
+  "Bash(python3 devtools/factory/factory.py check*)",
+  "Bash(python3 devtools/factory/factory.py status*)",
+  "Bash(python3 devtools/factory/factory.py impact*)",
+  "Bash(python3 devtools/factory/factory.py reopen*)",
+  "Bash(python3 devtools/factory/factory.py verify*)",
+  "Bash(python3 devtools/factory/factory.py pr-body*)",
+  # A book run regenerates the task roll-up after writing project.md, and checks the book.
+  "Bash(python3 devtools/checks/gen-task-rollup.py*)", "Bash(python3 devtools/checks/check-book.py*)",
+  "Bash(git status*)", "Bash(git diff*)", "Bash(git log*)", "Bash(git show*)",
+  "Bash(git add*)", "Bash(git commit*)", "Bash(git rm*)", "Bash(git mv*)",
+  "Bash(dotnet build*)", "Bash(dotnet test*)",
+]

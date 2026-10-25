@@ -1,0 +1,49 @@
+/* The design tokens: every colour, size and space a component uses comes from here (docs/ui-standard.md §5).
+   Colours meet WCAG 2.2 AA in both themes — text 4.5:1, controls 3:1. The theme follows the operating system;
+   <html data-theme="light"> or "dark" overrides it. */
+:root {
+  color-scheme: light dark;
+
+  --color-bg: light-dark(#ffffff, #12151a);
+  --color-surface: light-dark(#f6f7f9, #1b2027);
+  --color-text: light-dark(#1b1f24, #e8ebef);
+  --color-text-muted: light-dark(#525a65, #a9b1bc);
+  --color-border: light-dark(#d5d9df, #2e3540);
+  --color-border-strong: light-dark(#767f8a, #7d8794);
+  --color-primary: light-dark(#1d4ed8, #7aa2ff);
+  --color-primary-hover: light-dark(#1e40af, #a5c0ff);
+  --color-on-primary: light-dark(#ffffff, #0b1220);
+  --color-danger: light-dark(#b91c1c, #ff8a8a);
+  --color-on-danger: light-dark(#ffffff, #0b1220);
+  --color-success: light-dark(#15803d, #6ee7a0);
+  --color-warning: light-dark(#a16207, #fbbf24);
+  --color-focus: light-dark(#1d4ed8, #7aa2ff);
+
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.5rem;
+  --text-2xl: 2rem;
+  --leading: 1.5;
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --control-height: 2.5rem;
+  --nav-width: 15rem;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+}

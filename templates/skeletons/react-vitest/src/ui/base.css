@@ -1,0 +1,303 @@
+/* Base styles and the shared components' looks. Values come from tokens.css only. */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: var(--leading);
+  color: var(--color-text);
+  background: var(--color-bg);
+}
+
+h1 {
+  font-size: var(--text-2xl);
+  line-height: 1.2;
+  margin: 0 0 var(--space-6);
+}
+
+h2 {
+  font-size: var(--text-xl);
+  line-height: 1.3;
+  margin: 0 0 var(--space-3);
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+a {
+  color: var(--color-primary);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* The skip link: off screen until it has focus. */
+.skip-link {
+  position: absolute;
+  left: var(--space-2);
+  top: -10rem;
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-bg);
+  border-radius: var(--radius-sm);
+  z-index: 1;
+}
+
+.skip-link:focus {
+  top: var(--space-2);
+}
+
+/* The app shell: header across the top, navigation at the side, main beside it. */
+.shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: var(--nav-width) minmax(0, 1fr);
+  grid-template-rows: auto 1fr;
+  grid-template-areas: "header header" "nav main";
+}
+
+.shell-header {
+  grid-area: header;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.shell-name {
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+
+.shell-menu-button {
+  display: none;
+}
+
+.shell-nav {
+  grid-area: nav;
+  padding: var(--space-4);
+  border-right: 1px solid var(--color-border);
+}
+
+.shell-nav ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.shell-nav a {
+  display: block;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.shell-nav a:hover {
+  background: var(--color-surface);
+}
+
+.shell-nav a[aria-current="page"] {
+  background: var(--color-surface);
+  font-weight: 600;
+  box-shadow: inset 3px 0 0 var(--color-primary);
+}
+
+.shell-main {
+  grid-area: main;
+  padding: var(--space-6) var(--space-4);
+  max-width: 72rem;
+}
+
+/* Narrow screens: one column, and the navigation behind the Menu button. */
+@media (max-width: 48rem) {
+  .shell {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto 1fr;
+    grid-template-areas: "header" "nav" "main";
+  }
+
+  .shell-menu-button {
+    display: inline-flex;
+  }
+
+  .shell-nav {
+    border-right: 0;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .shell-nav:not([data-open]) {
+    display: none;
+  }
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--control-height);
+  padding: 0 var(--space-4);
+  font: inherit;
+  font-weight: 600;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.button-primary {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+.button-primary:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+}
+
+.button-secondary {
+  background: transparent;
+  color: var(--color-text);
+  border-color: var(--color-border-strong);
+}
+
+.button-danger {
+  background: var(--color-danger);
+  color: var(--color-on-danger);
+}
+
+.field {
+  display: grid;
+  gap: var(--space-1);
+  margin-bottom: var(--space-4);
+}
+
+.field label {
+  font-weight: 600;
+}
+
+.field input {
+  min-height: var(--control-height);
+  padding: 0 var(--space-3);
+  font: inherit;
+  color: var(--color-text);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+}
+
+.field input[aria-invalid="true"] {
+  border-color: var(--color-danger);
+  border-width: 2px;
+}
+
+.field-hint {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.field-error {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-danger);
+  font-weight: 600;
+}
+
+.state {
+  padding: var(--space-8) var(--space-4);
+  text-align: center;
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-md);
+}
+
+.state p {
+  margin: 0 0 var(--space-4);
+  color: var(--color-text-muted);
+}
+
+.state-error {
+  border-style: solid;
+  border-color: var(--color-danger);
+}
+
+/* Shown only after 300ms, so a fast answer never flashes a spinner (docs/ui-standard.md §3). */
+.loading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-muted);
+  animation: appear 0s 300ms both;
+}
+
+.spinner {
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 2px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes appear {
+  from {
+    visibility: hidden;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: none;
+  }
+}
+
+/* A wide table scrolls inside its own box, never the page. */
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: var(--space-2) var(--space-3);
+  text-align: start;
+  border-bottom: 1px solid var(--color-border);
+}
+
+th {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}

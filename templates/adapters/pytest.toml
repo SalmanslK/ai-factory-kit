@@ -1,0 +1,101 @@
+# What init.py needs to install this stack; read by the installer and left out of factory.toml.
+[kit]
+# The paths each step may write: the tests step, and the build step.
+test_writes = ["tests/**"]
+build_writes = ["src/**", "docs/**", "README.md"]
+# Beyond the source roots, the files whose change reaches every test: packages and build settings.
+cross_cutting = ["pyproject.toml", "requirements*.txt", "setup.cfg", "tests/conftest.py", "conftest.py"]
+# The guard's .NET rules do not apply to this stack.
+guard_dotnet_ef = false
+guard_appsettings_secrets = false
+
+# ---------------------------------------------------------------- the stack adapter: pytest
+# Tests are tagged @pytest.mark.ac("R-001.AC-1"); the kit's conftest plugin adds
+# `--ac a,b` to run only the tests of those criteria. Results are JUnit XML.
+
+[adapter]
+name = "pytest"
+acceptance_note = "The tests ran under the referee; evidence from a deployed environment comes after the merge."
+test_files = ["tests/**/*.py"]
+skip_parts = ["__pycache__", ".venv", "venv", ".pytest_cache"]
+criterion_marker = '@pytest\.mark\.ac\(\s*"([^"]+)"\s*\)'
+project_depth = 0
+run_tests = 'python3 -m pytest -q -p no:cacheprovider --junitxml "{results}/results.xml"'
+run_tests_filtered = 'python3 -m pytest -q -p no:cacheprovider --ac "{filter}" --junitxml "{results}/results.xml"'
+criterion_filter = "{ac}"
+criteria_join = ","
+results = "junit"
+results_file = "results.xml"
+# Python has no compile step that can fail for a missing symbol: a test importing what the
+# build step will add fails at collection, which pytest reports as a failed test — red.
+compile_error = '(?!)'
+missing_symbol_errors = []
+
+[commands]
+build = "python3 -m compileall -q src tests"
+test_projects_always = ["."]
+integration_project = ""
+integration_filter = ""
+verify = ["python3 devtools/factory/factory.py index --check"]
+
+# The code rules a regular expression holds honestly, refused at every commit by
+# devtools/checks/check-code-rules.py (the pre-commit hook): each one a generic rule in CLAUDE.md's
+# Coding principles. `files` and `exempt` are globs from the stack's root; a line matching `skip_lines`
+# (a comment) is not judged. The one place a rule allows goes in its `exempt`, with the reason beside it.
+# A catch-all with a re-raise is legitimate, which a regular expression cannot tell: only bare `except:`.
+[[code_rules]]
+id = "clock"
+pattern = '\bdatetime\.(?:now|utcnow|today)\(|\bdate\.today\(|(?<![\w.])time\.time(?:_ns)?\('
+files = ["src/**/*.py"]
+# The one module that reads the system clock, injected everywhere else.
+exempt = ["src/**/clock.py"]
+skip_lines = '^\s*#'
+message = "take the time from the injected clock, never the system clock in place (CLAUDE.md, Coding principles: time comes from an injected clock)."
+
+[[code_rules]]
+id = "bare-except"
+pattern = '^\s*except\s*:'
+files = ["src/**/*.py"]
+exempt = []
+message = "catch the exception you can handle; a bare except also swallows KeyboardInterrupt and SystemExit (CLAUDE.md, Coding principles: catch only the failures you can handle)."
+
+[[code_rules]]
+id = "print"
+pattern = '(?<![\w.])print\('
+files = ["src/**/*.py"]
+# A command-line entry point writes its output to the terminal.
+exempt = ["src/**/__main__.py"]
+skip_lines = '^\s*#'
+message = "log through the logging module with named fields, never print (CLAUDE.md, Coding principles: structured logging)."
+
+[[code_rules]]
+id = "vague-name"
+pattern = '^\s*class\s+\w*(?:Helper|Utility|Utilities|Utils)\b'
+files = ["src/**/*.py"]
+exempt = []
+message = "name the class for what it is or does, never Helper or Utility (CLAUDE.md, Coding principles: name things for what they are)."
+
+[drive]
+claude = "claude"
+model = ""
+permission_mode = "acceptEdits"
+setting_sources = "project,local"
+max_budget_usd_per_step = 5
+max_attempts = 3
+compact_above_tokens = 120000
+# "step": a fresh session per step (steps naming the same `session` share one); "run": one for the run.
+session = "step"
+allowed_tools = [
+  "Read", "Edit", "Write", "Glob", "Grep",
+  "Bash(python3 devtools/factory/factory.py check*)",
+  "Bash(python3 devtools/factory/factory.py status*)",
+  "Bash(python3 devtools/factory/factory.py impact*)",
+  "Bash(python3 devtools/factory/factory.py reopen*)",
+  "Bash(python3 devtools/factory/factory.py verify*)",
+  "Bash(python3 devtools/factory/factory.py pr-body*)",
+  # A book run regenerates the task roll-up after writing project.md, and checks the book.
+  "Bash(python3 devtools/checks/gen-task-rollup.py*)", "Bash(python3 devtools/checks/check-book.py*)",
+  "Bash(git status*)", "Bash(git diff*)", "Bash(git log*)", "Bash(git show*)",
+  "Bash(git add*)", "Bash(git commit*)", "Bash(git rm*)", "Bash(git mv*)",
+  "Bash(python3 -m pytest*)", "Bash(python -m pytest*)", "Bash(python3 -m compileall*)",
+]

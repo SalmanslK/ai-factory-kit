@@ -1,0 +1,125 @@
+# What init.py needs to install this stack; read by the installer and left out of factory.toml.
+[kit]
+# The paths each step may write: the tests step, and the build step. Tests sit beside the code they
+# test (Vitest's default). The guard matches these with fnmatch, where `*` spans folders, so
+# `src/*.test.tsx` holds `src/cart/Cart.test.tsx` too. package.json and the lock file are left out:
+# a new dependency is a person's decision, not the build session's. vite.config.ts is the build's: the
+# dev-server proxy to the API lives there (trial R-008).
+test_writes = ["src/*.test.ts", "src/*.test.tsx"]
+# package.json and its lock: a feature that needs a library adds it in its build (for example, a plan that named three
+# and no step could write them). README.md: the commands a person runs.
+build_writes = ["src/**", "index.html", "public/**", "docs/**", "vite.config.ts", "package.json", "package-lock.json", "README.md"]
+# Beyond the source roots, the files whose change reaches every test: packages and tool settings.
+cross_cutting = ["package.json", "package-lock.json", "tsconfig*.json", "vite.config.*", "vitest.config.*",
+                 "eslint.config.*"]
+# The guard's .NET rules do not apply to this stack.
+guard_dotnet_ef = false
+guard_appsettings_secrets = false
+
+# ---------------------------------------------------------------- the stack adapter: React + Vitest
+# A test is src/**/*.test.ts(x). Its criterion is a tag in its name — it("shows the total [AC R-001.AC-1]", …)
+# — so Vitest's own -t runs one criterion's tests; no plugin. Results are JUnit XML. TypeScript is the
+# compiler: `npm run build` is `tsc --noEmit && vite build`, so a test naming what the build step will add
+# is red by missing symbol (TS2305 …), as a .NET test is by CS0246.
+
+[adapter]
+name = "react-vitest"
+acceptance_note = "The tests ran under the referee in Vitest (jsdom); evidence from a deployed environment comes after the merge."
+test_files = ["src/**/*.test.ts", "src/**/*.test.tsx"]
+skip_parts = ["node_modules", "dist", "coverage"]
+criterion_marker = '\[AC ([^\]\s]+)\]'
+# Vitest runs TypeScript without type-checking it; a test that asserts nothing is refused at the tests step.
+vacuous_words = '(?:it|test|describe|expect|async|await|const|let|var|return|true|false|null|undefined|toBe|toEqual|toBeTruthy|toBeFalsy|toBeDefined|toBeUndefined|toBeNull|not|assert)'
+comment = '//[^\n]*|/\*.*?\*/'
+project_depth = 0
+run_tests = 'npx --no vitest run --reporter=default --reporter=junit --outputFile.junit="{results}/results.xml"'
+# What the referee runs to install a package a design's `### Packages` names, once a person has approved it at the
+# design gate (the AI never installs one itself). {name} and {version}: one package, an exact version.
+install_package = 'npm install --save-exact {name}@{version}'
+install_dev_package = 'npm install --save-exact --save-dev {name}@{version}'
+run_tests_filtered = 'npx --no vitest run --reporter=default --reporter=junit --outputFile.junit="{results}/results.xml" -t "{filter}"'
+# -t is a JavaScript regular expression over the test's full name; a lone `]` is a literal, so
+# `AC R-001.AC-1]` never matches `AC R-001.AC-10]`.
+criterion_filter = "AC {ac}]"
+criteria_join = "|"
+results = "junit"
+results_file = "results.xml"
+# A filtered Vitest run lists every test -t left out as skipped: count only the filtered criteria's own.
+filtered_results = "tagged"
+compile_error = 'error (TS\d{4,5})'
+# Cannot find name, no exported member, cannot find module, no such property — the symbol the build adds.
+missing_symbol_errors = ["TS2304", "TS2305", "TS2307", "TS2339", "TS2551", "TS2552", "TS2614", "TS2724"]
+# A bundler failure beside a missing symbol is not red proof.
+any_error = 'error during build|\[ERROR\]'
+
+[commands]
+build = "npm run build"
+test_projects_always = ["."]
+integration_project = ""
+integration_filter = ""
+verify = ["python3 devtools/factory/factory.py index --check", "npm run lint", "npm run typecheck"]
+
+# The code rules a regular expression holds honestly, refused at every commit by
+# devtools/checks/check-code-rules.py (the pre-commit hook): each one a generic rule in CLAUDE.md's
+# Coding principles. `files` and `exempt` are globs from the stack's root; a line matching `skip_lines`
+# (a comment) is not judged. The one place a rule allows goes in its `exempt`, with the reason beside it.
+# The starter's ESLint config holds the same rules at the verify step; these hold in any React project.
+[[code_rules]]
+id = "clock"
+pattern = '\bDate\.now\(\)|\bnew\s+Date\(\s*\)'
+files = ["src/**/*.ts", "src/**/*.tsx"]
+# The one module that reads the system clock; a test sets the time it needs.
+exempt = ["src/clock.ts", "src/**/*.test.ts", "src/**/*.test.tsx", "src/test-setup.ts"]
+skip_lines = '^\s*(?://|/?\*)'
+message = "take the time from src/clock.ts, never the system clock in place (CLAUDE.md, Coding principles: time comes from an injected clock)."
+
+[[code_rules]]
+id = "console-output"
+pattern = '\bconsole\.(?:log|debug|info|trace)\('
+files = ["src/**/*.ts", "src/**/*.tsx"]
+exempt = ["src/**/*.test.ts", "src/**/*.test.tsx"]
+skip_lines = '^\s*(?://|/?\*)'
+message = "no console.log left in the product; console.warn and console.error report a fault (CLAUDE.md, Coding principles: structured logging)."
+
+[[code_rules]]
+id = "empty-catch"
+pattern = '\bcatch\s*(?:\([^)]*\))?\s*\{\s*\}'
+files = ["src/**/*.ts", "src/**/*.tsx"]
+exempt = []
+skip_lines = '^\s*(?://|/?\*)'
+message = "an empty catch hides the fault: handle the failure you expect, or let it surface (CLAUDE.md, Coding principles: catch only the failures you can handle)."
+
+[[code_rules]]
+id = "vague-name"
+pattern = '\b(?:class|interface|type|enum|function|const)\s+\w*(?:Helper|Utility|Utilities|Utils)\b'
+files = ["src/**/*.ts", "src/**/*.tsx"]
+exempt = []
+skip_lines = '^\s*(?://|/?\*)'
+message = "name it for what it is or does, never Helper or Utility (CLAUDE.md, Coding principles: name things for what they are)."
+
+[drive]
+claude = "claude"
+model = ""
+permission_mode = "acceptEdits"
+setting_sources = "project,local"
+max_budget_usd_per_step = 5
+max_attempts = 3
+compact_above_tokens = 120000
+# "step": a fresh session per step (steps naming the same `session` share one); "run": one for the run.
+session = "step"
+allowed_tools = [
+  "Read", "Edit", "Write", "Glob", "Grep",
+  "Bash(python3 devtools/factory/factory.py check*)",
+  "Bash(python3 devtools/factory/factory.py status*)",
+  "Bash(python3 devtools/factory/factory.py impact*)",
+  "Bash(python3 devtools/factory/factory.py reopen*)",
+  "Bash(python3 devtools/factory/factory.py verify*)",
+  "Bash(python3 devtools/factory/factory.py pr-body*)",
+  # A book run regenerates the task roll-up after writing project.md, and checks the book.
+  "Bash(python3 devtools/checks/gen-task-rollup.py*)", "Bash(python3 devtools/checks/check-book.py*)",
+  "Bash(git status*)", "Bash(git diff*)", "Bash(git log*)", "Bash(git show*)",
+  "Bash(git add*)", "Bash(git commit*)", "Bash(git rm*)", "Bash(git mv*)",
+  # Never `npm install`: a dependency is a person's decision.
+  "Bash(npm run build*)", "Bash(npm run lint*)", "Bash(npm run typecheck*)", "Bash(npm test*)",
+  "Bash(npx --no vitest*)", "Bash(npx vitest*)", "Bash(npx tsc*)",
+]
